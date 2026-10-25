@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0d0b" />
+    <meta name="description" content="和平行动 — 一款为手机和平板打造的 3D 迷你大逃杀游戏。" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0f0c'/%3E%3Cpath d='M32 7 54 19v18c0 12-9 18-22 21C19 55 10 49 10 37V19Z' fill='none' stroke='%23f7b733' stroke-width='4'/%3E%3Cpath d='M22 32h20M32 22v20' stroke='%23f7b733' stroke-width='4'/%3E%3C/svg%3E" />
+    <title>和平行动 · PEACE OPS</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene" aria-label="和平行动 3D 战场"></canvas>
+      <div id="vignette" aria-hidden="true"></div>
+      <div id="damage-flash" aria-hidden="true"></div>
+
+      <div id="hud" aria-hidden="true">
+        <div class="hud-top">
+          <div class="hud-stat">
+            <span class="hud-kicker">存活</span>
+            <strong id="alive-count">12</strong>
+            <span class="hud-sub">ALIVE</span>
+          </div>
+
+          <div class="compass-wrap">
+            <canvas id="compass" width="640" height="52"></canvas>
+            <div class="compass-notch"></div>
+          </div>
+
+          <div class="hud-stat align-right">
+            <span class="hud-kicker">淘汰</span>
+            <strong id="kill-count">0</strong>
+            <span class="hud-sub">KILLS</span>
+          </div>
+        </div>
+
+        <div class="minimap-wrap">
+          <canvas id="minimap" width="320" height="320"></canvas>
+          <div class="minimap-frame" aria-hidden="true"></div>
+          <div class="minimap-label">
+            <span id="zone-phase">安全区 1</span>
+            <span id="zone-timer">00:20</span>
+          </div>
+        </div>
+
+        <div id="killfeed"></div>
+        <div id="pickup-toast"></div>
+        <div id="zone-banner" class="hidden"></div>
+
+        <div id="crosshair" aria-hidden="true">
+          <i class="ch ch-top"></i>
+          <i class="ch ch-right"></i>
+          <i class="ch ch-bottom"></i>
+          <i class="ch ch-left"></i>
+          <span class="ch-dot"></span>
+        </div>
+        <div id="hitmarker" aria-hidden="true"></div>
+
+        <div class="hud-bottom">
+          <div class="vitals">
+            <div class="vital-row">
+              <span class="vital-icon armor-icon">◆</span>
+              <div class="vital-bar armor"><i id="armor-fill"></i></div>
+              <span class="vital-num" id="armor-text">0</span>
+            </div>
+            <div class="vital-row">
+              <span class="vital-icon health-icon">✚</span>
+              <div class="vital-bar health"><i id="health-fill"></i></div>
+              <span class="vital-num" id="health-text">100</span>
+            </div>
+          </div>
+
+          <div class="weapon-panel">
+            <div class="weapon-meta">
+              <span class="weapon-name">M416</span>
+              <span class="weapon-type">突击步枪</span>
+            </div>
+            <div class="ammo-row">
+              <strong id="ammo-mag">30</strong>
+              <span class="slash">/</span>
+              <em id="ammo-reserve">120</em>
+            </div>
+            <div id="reload-meter"><i></i></div>
+          </div>
+        </div>
+
+        <button id="pause-btn" class="hud-btn" type="button" aria-label="暂停游戏">
+          <span></span><span></span>
+        </button>
+
+        <div id="touch-controls" aria-hidden="true">
+          <div id="joystick">
+            <div id="joystick-ring"></div>
+            <div id="joystick-knob"></div>
+          </div>
+          <div class="touch-actions">
+            <button id="btn-jump" class="round-btn small" type="button">跳</button>
+            <button id="btn-heal" class="round-btn small" type="button">药<b id="med-count">2</b></button>
+            <button id="btn-reload" class="round-btn small" type="button">换弹</button>
+            <button id="btn-fire" class="round-btn fire" type="button">开火</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="overlay" class="screen">
+        <div class="start-shell">
+          <div class="brand">
+            <div class="brand-eyebrow"><i></i> PEACE OPS · MINI ROYALE</div>
+            <h1>和平<span>行动</span></h1>
+            <p class="brand-sub">12 人单排 · 信号区收缩 · 最后生还</p>
+          </div>
+
+          <div class="start-actions">
+            <button id="play-btn" class="primary" type="button">
+              <span>开始行动</span>
+              <small>DEPLOY</small>
+            </button>
+            <div class="controls-hint">
+              <div><b>手机 / 平板</b> 左摇杆移动 · 右侧滑动瞄准 · 开火键射击</div>
+              <div><b>电脑</b> WASD 移动 · 鼠标瞄准 · 左键开火 · R 换弹 · F 用药</div>
+            </div>
+          </div>
+
+          <div class="meta-row">
+            <span>3D</span><span>大逃杀</span><span>手机 / 平板</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="paused" class="screen hidden">
+        <div class="panel compact">
+          <div class="eyebrow">TACTICAL HOLD</div>
+          <h2>行动暂停</h2>
+          <p class="lede">战场已冻结，准备好后继续行动。</p>
+          <button id="resume-btn" class="primary" type="button">
+            <span>继续行动</span><small>RESUME</small>
+          </button>
+          <button id="quit-btn" class="ghost-btn" type="button">返回大厅</button>
+        </div>
+      </div>
+
+      <div id="result" class="screen hidden">
+        <div class="panel result-panel">
+          <div class="eyebrow" id="result-eyebrow">MISSION COMPLETE</div>
+          <h2 id="result-title">大吉大利</h2>
+          <p class="result-sub" id="result-sub">今晚吃鸡</p>
+          <div class="result-rank"><span id="result-rank">#1</span><small>最终排名</small></div>
+          <div class="result-stats">
+            <div><strong id="result-kills">0</strong><span>淘汰</span></div>
+            <div><strong id="result-damage">0</strong><span>伤害</span></div>
+            <div><strong id="result-time">00:00</strong><span>存活</span></div>
+          </div>
+          <button id="retry-btn" class="primary" type="button">
+            <span>再来一局</span><small>REDEPLOY</small>
+          </button>
+          <button id="lobby-btn" class="ghost-btn" type="button">返回大厅</button>
+        </div>
+      </div>
+
+      <div id="fatal" class="screen hidden">
+        <div class="panel compact">
+          <div class="eyebrow">RENDERER OFFLINE</div>
+          <h2>无法启动 3D</h2>
+          <p class="lede">当前设备或浏览器未能启动 WebGL 渲染器。请尝试更新 Chrome、Safari 或 Firefox，并开启硬件加速。</p>
+        </div>
+      </div>
+
+      <noscript>
+        <div class="screen">
+          <div class="panel compact">
+            <h2>需要 JavaScript</h2>
+            <p class="lede">请启用 JavaScript 后进入和平行动。</p>
+          </div>
+        </div>
+      </noscript>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
